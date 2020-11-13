@@ -60,23 +60,15 @@ The template has created the necessary AppConfig resources. Let's just deploy a 
 1. Go to the AppConfig console: https://eu-west-1.console.aws.amazon.com/systems-manager/appconfig/?region=eu-west-1 (ensure that the region is the one where you deployed the CloudFormation stack).
 2. Click on the `aws-appconfig-demo` app to view its details.
 3. Go to the `Configuration profiles` tab.
-4. Click on the `app` profile.
-5. Click on `Create` next to the **No hosted configuration versions exists for this configuration profile** message.
-6. Select `JSON` as the content type, and enter the following as the content:
-
-```
-{
-    "includeReleaseYear": true,
-    "errorProbability": 0
-}
-```
-
+4. Click on the `app` profile. You'll see there a configuration version already deployed (version 1). This was created for you by the CloudFormation template.
+5. Click on `Create` next to the **Version** dropdown.
+6. Select `JSON` as the content type, and change the `includeReleaseYear` attribute to `true` in the content box (which should have been populated already with the previous configuration).
 7. Click on **Create hosted configuration version**.
 
 Now let's deploy it:
 
 1. Click on **Start deployment**.
-2. Select the `prod` environment, version `1`, and deployment strategy `Custom.Immediate.Bake5Mins`.
+2. Select the `prod` environment, version `2`, and deployment strategy `Custom.Immediate.Bake5Mins`.
 3. Click on **Start deployment**.
 
 The deployment will begin, and should be instantaneous. The demo app includes a script that runs every minute and checks if there are new configurations available. Wait for a minute and then refresh the app. The response should now include the release year:

@@ -115,6 +115,27 @@ Resources:
       GrowthType: LINEAR
       Name: Custom.Immediate.Bake5Mins
       ReplicateTo: NONE
+
+  AppConfigConfigVersion:
+    Type: AWS::AppConfig::HostedConfigurationVersion
+    Properties:
+      ApplicationId: !Ref AppConfigApp
+      ConfigurationProfileId: !Ref AppConfigConfigProfile
+      ContentType: application/json
+      Content: |
+        {
+          "includeReleaseYear": true,
+          "errorProbability": 0
+        }
+
+  AppConfigDeployment:
+    Type: AWS::AppConfig::Deployment
+    Properties:
+      ApplicationId: !Ref AppConfigApp
+      ConfigurationProfileId: !Ref AppConfigConfigProfile
+      ConfigurationVersion: !Ref AppConfigConfigVersion
+      DeploymentStrategyId: !Ref AppConfigDeploymentStrategy
+      EnvironmentId: !Ref AppConfigEnvironment
   #
   # End of Section: AppConfig
   #
