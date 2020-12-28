@@ -1,0 +1,125 @@
+Parameters:
+  AppImageUri:
+    Type: String
+    Default: carlosafonso/aws-appconfig-demo
+
+Resources:
+  LogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: /aws-appconfig-demo
+      RetentionInDays: 14
+
+  #
+  # Section: Network
+  #
+  NetworkStack:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: ./network.yaml
+  #
+  # End of Section: Network
+  #
+
+  #
+  # Section: ECS cluster
+  #
+  EcsClusterStack:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: ./ecs-cluster.yaml
+      Parameters:
+        VpcId: !GetAtt NetworkStack.Outputs.VpcId
+        PublicSubnetAId: !GetAtt NetworkStack.Outputs.PublicSubnetAId
+        PublicSubnetBId: !GetAtt NetworkStack.Outputs.PublicSubnetBId
+
+  AppServiceStack:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: ./service.yaml
+      Parameters:
+        ALBTargetGroupArn: !GetAtt EcsClusterStack.Outputs.ALBTargetGroupArn
+        AppConfigAppId: !Ref AppConfigApp
+        AppConfigConfigProfileId: !Ref AppConfigConfigProfile
+        AppConfigEnvironmentId: !Ref AppConfigEnvironment
+        AppImageUri: !Ref AppImageUri
+        ClusterArn: !GetAtt EcsClusterStack.Outputs.ClusterArn
+        ClusterName: !GetAtt EcsClusterStack.Outputs.ClusterName
+        ClusterSecurityGroupId: !GetAtt EcsClusterStack.Outputs.ClusterSecurityGroupId
+        LogGroup: !Ref LogGroup
+        PublicSubnetAId: !GetAtt NetworkStack.Outputs.PublicSubnetAId
+        PublicSubnetBId: !GetAtt NetworkStack.Outputs.PublicSubnetBId
+        TaskExecutionRoleArn: !GetAtt EcsClusterStack.Outputs.TaskExecutionRoleArn
+  #
+  # End of Section: ECS cluster
+  #
+
+  #
+  # Section: Monitoring and Logging
+  #
+  LogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: /aws-appconfig-demo
+      RetentionInDays: 14
+  #
+  # End of Section: Monitoring and Logging
+  #
+
+  #
+  # Section: AppConfig
+  #
+  AppConfigApp:
+    Type: AWS::AppConfig::Application
+    Properties:
+      Name: aws-appconfig-demo
+
+  AppConfigEnvironment:
+    Type: AWS::AppConfig::Environment
+    Properties:
+      ApplicationId: !Ref AppConfigApp
+      Name: prod
+
+  AppConfigConfigProfile:
+    Type: AWS::AppConfig::ConfigurationProfile
+    Properties:
+      ApplicationId: !Ref AppConfigApp
+      LocationUri: hosted
+      Name: app
+      Validators:
+        - Content: |
+            {
+              "title": "AppConfigDemoApp",
+              "description": "Configuration JSON for the AppConfig demo app",
+              "type": "object",
+              "properties": {
+                "includeReleaseYear": {
+                  "description": "Feature flag - whether to include the release year in the response",
+                  "type": "boolean"
+                },
+                "errorProbability": {
+                  "description": "The probability, between 0 and 1, for a random error to occur",
+                  "type": "number"
+                }
+              },
+              "required": [ "includeReleaseYear", "errorProbability" ]
+            }
+          Type: JSON_SCHEMA
+
+  AppConfigDeploymentStrategy:
+    Type: AWS::AppConfig::DeploymentStrategy
+    Properties:
+      DeploymentDurationInMinutes: 0
+      FinalBakeTimeInMinutes: 5
+      GrowthFactor: 100
+      GrowthType: LINEAR
+      Name: Custom.Immediate.Bake5Mins
+      ReplicateTo: NONE
+  #
+  # End of Section: AppConfig
+  #
+
+Outputs:
+  AppUrl:
+    Description: The URL to the Application Load Balancer fronting the cluster.
+    Value: !Join ['', ['http://', !GetAtt EcsClusterStack.Outputs.ALBDNSName]]

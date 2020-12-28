@@ -1,0 +1,114 @@
+Parameters:
+  VpcId:
+    Type: String
+  PublicSubnetAId:
+    Type: String
+  PublicSubnetBId:
+    Type: String
+
+Resources:
+  ALBSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Security group for the ALB
+      SecurityGroupIngress:
+        - CidrIp: 0.0.0.0/0
+          IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          Description: Allow HTTP traffic from the Internet
+      SecurityGroupEgress:
+        - CidrIp: 0.0.0.0/0
+          IpProtocol: tcp
+          FromPort: 0
+          ToPort: 65535
+          Description: Allow all traffic to the Internet
+      VpcId: !Ref VpcId
+
+  ALB:
+    Type: AWS::ElasticLoadBalancingV2::LoadBalancer
+    Properties:
+      SecurityGroups:
+        - !Ref ALBSecurityGroup
+      Subnets:
+        - !Ref PublicSubnetAId
+        - !Ref PublicSubnetBId
+      Type: application
+
+  ALBTargetGroup:
+    Type: AWS::ElasticLoadBalancingV2::TargetGroup
+    Properties:
+      HealthCheckIntervalSeconds: 10
+      HealthCheckPath: /
+      HealthCheckPort: traffic-port
+      HealthCheckProtocol: HTTP
+      HealthyThresholdCount: 2
+      Port: 80
+      Protocol: HTTP
+      TargetGroupAttributes:
+        - Key: deregistration_delay.timeout_seconds
+          Value: 5
+      TargetType: ip
+      UnhealthyThresholdCount: 2
+      VpcId: !Ref VpcId
+
+  ALBListener:
+    Type: AWS::ElasticLoadBalancingV2::Listener
+    Properties:
+      DefaultActions:
+        - Type: forward
+          TargetGroupArn: !Ref ALBTargetGroup
+      LoadBalancerArn: !Ref ALB
+      Port: 80
+      Protocol: HTTP
+
+  TaskExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: ecs-tasks.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy
+
+  ClusterSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Security group to be used within the cluster
+      SecurityGroupIngress:
+        - SourceSecurityGroupId: !Ref ALBSecurityGroup
+          IpProtocol: tcp
+          FromPort: 8080
+          ToPort: 8080
+          Description: Allow HTTP traffic from the ALB
+      SecurityGroupEgress:
+        - CidrIp: 0.0.0.0/0
+          IpProtocol: tcp
+          FromPort: 0
+          ToPort: 65535
+          Description: Allow all traffic to the Internet
+      VpcId: !Ref VpcId
+
+  Cluster:
+    Type: AWS::ECS::Cluster
+
+Outputs:
+  ALB:
+    Value: !Ref ALB
+  ALBFullName:
+    Value: !GetAtt ALB.LoadBalancerFullName
+  ALBDNSName:
+    Value: !GetAtt ALB.DNSName
+  ALBTargetGroupArn:
+    Value: !Ref ALBTargetGroup
+  ClusterName:
+    Value: !Ref Cluster
+  ClusterArn:
+    Value: !GetAtt Cluster.Arn
+  ClusterSecurityGroupId:
+    Value: !Ref ClusterSecurityGroup
+  TaskExecutionRoleArn:
+    Value: !Ref TaskExecutionRole

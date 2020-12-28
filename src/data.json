@@ -1,0 +1,22 @@
+[
+    {
+        "artist": "Michael Jackson",
+        "title": "Thriller",
+        "year": 1982
+    },
+    {
+        "artist": "Elton John",
+        "title": "Leather Jackets",
+        "year": 1986
+    },
+    {
+        "artist": "The Beatles",
+        "title": "Abbey Road",
+        "year": 1969
+    },
+    {
+        "artist": "The Whispers",
+        "title": "The Whispers",
+        "year": 1979
+    }
+]

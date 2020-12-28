@@ -1,0 +1,19 @@
+version: "3.8"
+services:
+  cron:
+    image: php:7.3-alpine3.11
+    entrypoint: ['crond', '-f', '-d6', '-c', '/var/www/html']
+    environment:
+      - AWS_REGION=<the code of the AWS region where you're deploying, e.g., eu-west-1>
+      - AWS_ACCESS_KEY_ID=<your access key>
+      - AWS_SECRET_ACCESS_KEY=<your access secret>
+    volumes:
+      - app-volume:/var/www/html
+  app:
+    build: ./src
+    ports:
+      - "80:8080"
+    volumes:
+      - app-volume:/var/www/html
+volumes:
+  app-volume:

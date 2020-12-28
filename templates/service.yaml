@@ -1,0 +1,118 @@
+Parameters:
+  ALBTargetGroupArn:
+    Type: String
+  AppConfigAppId:
+    Type: String
+  AppConfigConfigProfileId:
+    Type: String
+  AppConfigEnvironmentId:
+    Type: String
+  AppImageUri:
+    Type: String
+  ClusterArn:
+    Type: String
+  ClusterName:
+    Type: String
+  ClusterSecurityGroupId:
+    Type: String
+  LogGroup:
+    Type: String
+  PublicSubnetAId:
+    Type: String
+  PublicSubnetBId:
+    Type: String
+  TaskExecutionRoleArn:
+    Type: String
+
+Resources:
+  TaskRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: ecs-tasks.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: AllowAccessToAppConfig
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: 'Allow'
+                Action: 'AppConfig:GetConfiguration'
+                Resource:
+                  - !Sub 'arn:${AWS::Partition}:appconfig:${AWS::Region}:${AWS::AccountId}:application/${AppConfigAppId}'
+                  - !Sub 'arn:${AWS::Partition}:appconfig:${AWS::Region}:${AWS::AccountId}:application/${AppConfigAppId}/configurationprofile/${AppConfigConfigProfileId}'
+                  - !Sub 'arn:${AWS::Partition}:appconfig:${AWS::Region}:${AWS::AccountId}:application/${AppConfigAppId}/environment/${AppConfigEnvironmentId}'
+
+  AppTaskDef:
+    Type: AWS::ECS::TaskDefinition
+    Properties:
+      ContainerDefinitions:
+        - Name: app
+          Image: !Ref AppImageUri
+          Essential: true
+          LogConfiguration:
+            LogDriver: awslogs
+            Options:
+              awslogs-group: !Ref LogGroup
+              awslogs-region: !Ref AWS::Region
+              awslogs-stream-prefix: app
+          MemoryReservation: 512
+          MountPoints:
+            - ContainerPath: /var/www/html
+              SourceVolume: appvolume
+          PortMappings:
+            - ContainerPort: 8080
+          StopTimeout: 5
+        - Name: cron
+          Image: php:7.3-alpine3.11
+          Essential: false
+          Entrypoint: ['crond', '-f', '-d6', '-c', '/var/www/html']
+          LogConfiguration:
+            LogDriver: awslogs
+            Options:
+              awslogs-group: !Ref LogGroup
+              awslogs-region: !Ref AWS::Region
+              awslogs-stream-prefix: cron
+          MemoryReservation: 512
+          MountPoints:
+            - ContainerPath: /var/www/html
+              SourceVolume: appvolume
+          StopTimeout: 5
+      Cpu: 512
+      Memory: 1024
+      ExecutionRoleArn: !Ref TaskExecutionRoleArn
+      NetworkMode: awsvpc
+      RequiresCompatibilities:
+        - FARGATE
+      TaskRoleArn: !GetAtt TaskRole.Arn
+      Volumes:
+        - Name: appvolume
+
+  AppService:
+    Type: AWS::ECS::Service
+    Properties:
+      Cluster: !Ref ClusterArn
+      DeploymentController:
+        Type: ECS
+      DesiredCount: 1
+      LaunchType: FARGATE
+      LoadBalancers:
+        - ContainerName: app
+          ContainerPort: 8080
+          TargetGroupArn: !Ref ALBTargetGroupArn
+      NetworkConfiguration:
+        AwsvpcConfiguration:
+          AssignPublicIp: ENABLED
+          SecurityGroups:
+            - !Ref ClusterSecurityGroupId
+          Subnets:
+            - !Ref PublicSubnetAId
+            - !Ref PublicSubnetBId
+      TaskDefinition: !Ref AppTaskDef
+
+Outputs:
+  ServiceName:
+    Value: !GetAtt AppService.Name
