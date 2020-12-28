@@ -1,4 +1,6 @@
 <?php
+// Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+// SPDX-License-Identifier: MIT-0
 
 require __DIR__ . '/utils.inc.php';
 
