@@ -127,7 +127,7 @@ Resources:
       ContentType: application/json
       Content: |
         {
-          "includeReleaseYear": true,
+          "includeReleaseYear": false,
           "errorProbability": 0
         }
 
