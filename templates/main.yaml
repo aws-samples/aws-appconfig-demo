@@ -4,7 +4,7 @@
 Parameters:
   AppImageUri:
     Type: String
-    Default: carlosafonso/aws-appconfig-demo
+    Default: public.ecr.aws/h8l4v6g9/aws-appconfig-demo
 
 Resources:
   LogGroup:
